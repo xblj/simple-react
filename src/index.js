@@ -6,8 +6,12 @@ import ReactDOM from './react-dom';
 // }
 
 class App extends Component {
-  handleClick = () => {
-    console.log('click');
+  handleClick = e => {
+    console.log(e.target);
+    e.persist();
+    setTimeout(() => {
+      console.log(e);
+    }, 0);
   };
   render() {
     return (

@@ -11,8 +11,26 @@ export function flatten(array) {
   }, []);
 }
 
+/**
+ * 变量所有对象所有的属性，不包含原型链
+ * @param {object} obj
+ * @param {(value:any, key:string)=>void} fn
+ */
 export function forOwn(obj, fn) {
-  Object.keys(obj || {}).forEach(key => fn(obj[key], key));
+  Object.keys(obj || {}).forEach(key => {
+    fn(obj[key], key);
+  });
+}
+
+/**
+ * 变量所有对象所有的属性，包含原型链
+ * @param {object} obj
+ * @param {(value:any, key:string)=>void} fn
+ */
+export function forKeys(obj, fn) {
+  for (const key in obj) {
+    fn(obj[key], key);
+  }
 }
 
 /**
