@@ -31,6 +31,7 @@ function batchUpdate() {
     updater = updaters.pop();
     if (updater) {
       updater.updateComponent();
+      updater.pendingStates = [];
     }
   } while (updater);
   isPending = false;
@@ -79,17 +80,13 @@ export default class Updater {
   getState() {
     const { componentInstance, pendingStates } = this;
     let { state } = componentInstance;
-    let nextState;
-    do {
-      nextState = pendingStates.shift();
-      if (nextState) {
-        if (typeof nextState === 'function') {
-          state = nextState.call(componentInstance, state);
-        } else {
-          state = { ...state, ...nextState };
-        }
+    pendingStates.forEach(nextState => {
+      if (typeof nextState === 'function') {
+        state = nextState.call(componentInstance, state);
+      } else {
+        state = { ...state, ...nextState };
       }
-    } while (pendingStates.length > 0);
+    });
     return state;
   }
 }

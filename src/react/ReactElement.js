@@ -3,6 +3,7 @@ import {
   ELEMENT,
   CLASS_COMPONENT,
   FUNCTION_COMPONENT,
+  TEXT,
 } from '../shared/ReactSymbols';
 
 // 这些属性不需要挂载到dom上
@@ -53,7 +54,13 @@ export function createElement(type, config, ...children) {
 
   // 简化children，都设置为数组，原生react得children是可以为对象或者数组
   if (children.length) {
-    props.children = children;
+    props.children = children.map(item => {
+      if (typeof item === 'object') {
+        return item;
+      } else {
+        return { $$typeof: TEXT, type: TEXT, content: item };
+      }
+    });
   }
 
   if (type && type.defaultProps) {

@@ -23,7 +23,11 @@ class App extends Component {
 
   render() {
     return (
-      <div style={{ color: 'red' }} className="app" id="app">
+      <div
+        style={{ color: 'red' }}
+        className="app"
+        id={'id' + this.state.number}
+      >
         {this.state.number}
         <button onClick={this.handleClick}>+</button>
       </div>
