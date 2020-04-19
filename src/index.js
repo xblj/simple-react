@@ -1,27 +1,31 @@
 import React, { Component } from './react';
 import ReactDOM from './react-dom';
 
-// function App() {
-//   return <div>haha</div>;
-// }
+// import React, { Component } from 'react';
+// import ReactDOM from 'react-dom';
 
 class App extends Component {
-  handleClick = e => {
-    console.log(e.target);
-    e.persist();
-    setTimeout(() => {
-      console.log(e);
-    }, 0);
+  state = {
+    number: 1,
   };
+  handleClick = e => {
+    this.setState({
+      number: this.state.number + 1,
+    });
+    this.setState({
+      number: this.state.number + 1,
+    });
+  };
+
+  shouldComponentUpdate(nextProps, nextState) {
+    return true;
+  }
+
   render() {
     return (
-      <div
-        style={{ color: 'red' }}
-        className="app"
-        id="app"
-        onClick={this.handleClick}
-      >
-        我是类组件
+      <div style={{ color: 'red' }} className="app" id="app">
+        {this.state.number}
+        <button onClick={this.handleClick}>+</button>
       </div>
     );
   }

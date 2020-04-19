@@ -26,6 +26,7 @@ function createDOM(element) {
     const componentInstance = new type();
     const renderElement = componentInstance.render();
     dom = createDOM(renderElement);
+    componentInstance.dom = dom;
   }
   return dom;
 }
@@ -35,7 +36,9 @@ function createNativeDOM(element) {
 
   const { children } = props;
   const dom = document.createElement(type);
-  createNativeDOMChildren(dom, children);
+  if (children) {
+    createNativeDOMChildren(dom, children);
+  }
   setInitialProperty(dom, props);
   return dom;
 }
