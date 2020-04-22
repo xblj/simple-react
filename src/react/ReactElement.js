@@ -5,6 +5,7 @@ import {
   FUNCTION_COMPONENT,
   TEXT,
 } from '../shared/ReactSymbols';
+import { flatten } from '../shared/utils';
 
 // 这些属性不需要挂载到dom上
 const RESERVED_PROPS = {
@@ -53,15 +54,13 @@ export function createElement(type, config, ...children) {
   });
 
   // 简化children，都设置为数组，原生react得children是可以为对象或者数组
-  if (children.length) {
-    props.children = children.map(item => {
-      if (typeof item === 'object') {
-        return item;
-      } else {
-        return { $$typeof: TEXT, type: TEXT, content: item };
-      }
-    });
-  }
+  props.children = flatten(children).map(item => {
+    if (typeof item === 'object') {
+      return item;
+    } else {
+      return { $$typeof: TEXT, type: TEXT, content: item };
+    }
+  });
 
   if (type && type.defaultProps) {
     Object.keys(type.defaultProps).forEach(propName => {

@@ -7,6 +7,10 @@ import {
 } from '../shared/ReactSymbols';
 import { addEventListener } from './event';
 
+const MOVE = 'MOVE';
+const INSERT = 'INSERT';
+const REMOVE = 'REMOVE';
+
 let updateDepth = 0;
 let diffQueue = [];
 
@@ -30,6 +34,11 @@ export function compareTwoElements(oldRenderElement, newRenderElement) {
   return currentElement;
 }
 
+/**
+ *
+ * @param {*} currentElement 当前页面上渲染对应的reactElement
+ * @param {*} newElement 下一次新的reactElement
+ */
 function updateElement(currentElement, newElement) {
   const currentDOM = currentElement.dom;
   newElement.dom = currentElement.dom;
@@ -38,6 +47,7 @@ function updateElement(currentElement, newElement) {
       currentDOM.textContent = newElement.content;
     }
   } else if (currentElement.$$typeof === ELEMENT) {
+    // 先更新dom属性
     updateDOMProperties(currentDOM, currentElement.props, newElement.props);
     updateChildrenElements(
       currentDOM,
@@ -50,10 +60,158 @@ function updateElement(currentElement, newElement) {
 function updateChildrenElements(dom, oldElements, newElements) {
   updateDepth++;
   diff(dom, oldElements, newElements, diffQueue);
+  updateDepth--;
+  if (updateDepth === 0) {
+    patch(diffQueue);
+    diffQueue.length = 0;
+  }
 }
 
-function diff(parentNode, oldChildrenElements, newChildrenElements) {
-  // let;
+function patch(diffQueue) {
+  debugger;
+  let deleteMap = {};
+  let deleteChildren = [];
+  for (let index = 0; index < diffQueue.length; index++) {
+    const element = diffQueue[index];
+    const { type, fromIndex } = element;
+    if ([MOVE, REMOVE].includes(type)) {
+      let oldChildDOM = element.parentNode.children[fromIndex];
+      deleteMap[fromIndex] = oldChildDOM;
+      deleteChildren.push(oldChildDOM);
+    }
+  }
+  deleteChildren.forEach(childDOM => {
+    childDOM.parentNode.removeChild(childDOM);
+  });
+  for (let index = 0; index < diffQueue.length; index++) {
+    const element = diffQueue[index];
+    const { type, fromIndex, toIndex, parentNode, dom } = element;
+    switch (type) {
+      case INSERT:
+        insertChildAt(parentNode, dom, toIndex);
+        break;
+      case MOVE:
+        insertChildAt(parentNode, deleteMap[fromIndex], toIndex);
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+function insertChildAt(parentNode, dom, index) {
+  let oldChild = parentNode.children[index];
+  if (oldChild) {
+    parentNode.insertBefore(dom, oldChild);
+  } else {
+    parentNode.appendChild(dom);
+  }
+}
+
+function diff(parentNode, oldChildrenElements, newChildrenElements, diffQueue) {
+  let oldChildrenElementsMap = getChildrenElementsMap(oldChildrenElements);
+  let newChildrenElementsMap = getNewChildrenElementsMap(
+    oldChildrenElementsMap,
+    newChildrenElements
+  );
+  let lastIndex = 0;
+  for (let index = 0; index < newChildrenElements.length; index++) {
+    const newChildElement = newChildrenElements[index];
+    if (newChildElement) {
+      let key = newChildElement.key || `${index}`;
+      let oldChildElement = oldChildrenElementsMap.get(key);
+      if (newChildElement === oldChildElement) {
+        // 复用老节点
+        if (oldChildElement._mountIndex < lastIndex) {
+          diffQueue.push({
+            parentNode,
+            type: MOVE,
+            fromIndex: oldChildElement._mountIndex,
+            toIndex: index,
+          });
+        }
+        lastIndex = Math.max(oldChildElement._mountIndex, lastIndex);
+      } else {
+        diffQueue.push({
+          parentNode,
+          type: INSERT,
+          toIndex: index,
+          dom: createDOM(newChildElement),
+        });
+      }
+    } else {
+      // 之前有，现在没有了，那么就表示组件要卸载掉
+      let key = `${index}`;
+      const oldChildElement = oldChildrenElementsMap.get(key);
+      if (
+        oldChildElement.componentInstance &&
+        oldChildElement.componentInstance.componentWillUnmount
+      ) {
+        oldChildElement.componentInstance.componentWillUnmount();
+      }
+    }
+
+    // 遍历现有的元素
+    oldChildrenElementsMap.forEach((oldChildElement, key) => {
+      if (!newChildrenElementsMap.has(key)) {
+        diffQueue.push({
+          parentNode,
+          type: REMOVE,
+          fromIndex: oldChildElement._mountIndex,
+        });
+      }
+    });
+  }
+}
+
+/**
+ * 比较每个reactElement的key和type
+ */
+function getNewChildrenElementsMap(
+  oldChildrenElementsMap,
+  newChildrenElements
+) {
+  let newChildrenElementsMap = new Map();
+  for (let index = 0; index < newChildrenElements.length; index++) {
+    let newChildElement = newChildrenElements[index];
+    // null
+    if (!newChildElement) continue;
+    let key = newChildElement.key || `${index}`;
+    let oldChildElement = oldChildrenElementsMap.get(key);
+    // key相同，原生类型也相同那么就复用原来的reactElement
+    if (canDeepCompare(oldChildElement, newChildElement)) {
+      updateElement(oldChildElement, newChildElement);
+      newChildElement = oldChildElement;
+    }
+    newChildrenElementsMap.set(key, newChildElement);
+  }
+  return newChildrenElementsMap;
+}
+
+function canDeepCompare(oldChildElement, newChildElement) {
+  // 如果有一个不存在，那么就返回false
+  if (!!oldChildElement && !!newChildElement) {
+    // 如果dom标签类型一样就是true
+    return oldChildElement.type === newChildElement.type;
+  }
+
+  return false;
+}
+
+/**
+ *  生成一个key和reactElement的对应关系
+ * @param {reactElement[]} oldChildrenElements reactElement数组
+ */
+function getChildrenElementsMap(oldChildrenElements) {
+  let oldChildrenElementsMap = new Map();
+  console.log(oldChildrenElements);
+
+  for (let index = 0; index < oldChildrenElements.length; index++) {
+    const element = oldChildrenElements[index];
+    let key = element.key || `${index}`;
+    oldChildrenElementsMap.set(key, element);
+  }
+  return oldChildrenElementsMap;
 }
 
 function updateDOMProperties(dom, props, nextProps) {
@@ -134,7 +292,8 @@ function createNativeDOM(element) {
 }
 
 function createNativeDOMChildren(parentDOM, children) {
-  flatten(children).forEach(child => {
+  flatten(children).forEach((child, index) => {
+    child._mountIndex = index;
     let childDOM = createDOM(child);
     parentDOM.appendChild(childDOM);
   });

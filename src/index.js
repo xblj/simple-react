@@ -3,38 +3,41 @@ import ReactDOM from './react-dom';
 
 // import React, { Component } from 'react';
 // import ReactDOM from 'react-dom';
-
-class App extends Component {
-  state = {
-    number: 1,
-  };
-  handleClick = e => {
-    this.setState({
-      number: this.state.number + 1,
-    });
-    this.setState({
-      number: this.state.number + 1,
-    });
-  };
-
-  shouldComponentUpdate(nextProps, nextState) {
-    return true;
+class Todos extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { list: [], text: '' };
   }
-
+  add = () => {
+    if (this.state.text && this.state.text.length > 0) {
+      this.setState({ list: [...this.state.list, this.state.text] });
+    }
+  };
+  onChange = event => {
+    this.setState({ text: event.target.value });
+  };
+  onDel = index => {
+    this.state.list.splice(index, 1);
+    this.setState({ list: this.state.list });
+  };
   render() {
-    return (
-      <div
-        style={{ color: 'red' }}
-        className="app"
-        id={'id' + this.state.number}
-      >
-        {this.state.number}
-        <button onClick={this.handleClick}>+</button>
-      </div>
-    );
+    var createItem = (itemText, index) => {
+      return React.createElement(
+        'li',
+        {},
+        itemText,
+        React.createElement('button', { onClick: () => this.onDel(index) }, 'X')
+      );
+    };
+    var lists = this.state.list.map(createItem);
+    let ul = React.createElement('ul', {}, ...lists);
+    var input = React.createElement('input', {
+      onKeyup: this.onChange,
+      value: this.state.text,
+    });
+    var button = React.createElement('button', { onClick: this.add }, 'Add');
+    return React.createElement('div', {}, input, button, ul);
   }
 }
-
-// const element = React.createElement('div', {}, '我是原生组件');
-
-ReactDOM.render(<App />, document.getElementById('root'));
+let element = React.createElement(Todos, {});
+ReactDOM.render(element, document.getElementById('root'));
