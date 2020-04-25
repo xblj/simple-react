@@ -19,6 +19,7 @@ export function compareTwoElements(oldRenderElement, newRenderElement) {
   let currentElement = onlyOne(oldRenderElement);
   let currentDOM = oldRenderElement.dom;
   if (newRenderElement == null) {
+    // 这边表示新的dom节点会被卸载
     // null/undefined
     currentDOM.parentNode.removeChild(currentDOM);
     currentDOM = null;
@@ -41,7 +42,8 @@ export function compareTwoElements(oldRenderElement, newRenderElement) {
  */
 function updateElement(currentElement, newElement) {
   const currentDOM = currentElement.dom;
-  newElement.dom = currentElement.dom;
+  // 复用之前的dom
+  newElement.dom = currentDOM;
   if (currentElement.$$typeof === TEXT && newElement.$$typeof === TEXT) {
     if (currentElement.content !== newElement.content) {
       currentDOM.textContent = newElement.content;
@@ -54,6 +56,8 @@ function updateElement(currentElement, newElement) {
       currentElement.props.children,
       newElement.props.children
     );
+    // 使用新的属性替换老的属性
+    currentElement.props = newElement.props;
   }
 }
 
@@ -68,7 +72,6 @@ function updateChildrenElements(dom, oldElements, newElements) {
 }
 
 function patch(diffQueue) {
-  debugger;
   let deleteMap = {};
   let deleteChildren = [];
   for (let index = 0; index < diffQueue.length; index++) {
@@ -115,11 +118,12 @@ function diff(parentNode, oldChildrenElements, newChildrenElements, diffQueue) {
     newChildrenElements
   );
   let lastIndex = 0;
-  for (let index = 0; index < newChildrenElements.length; index++) {
-    const newChildElement = newChildrenElements[index];
+  // 记录遍历位序
+  let index = 0;
+  newChildrenElementsMap.forEach((newChildElement, key) => {
     if (newChildElement) {
-      let key = newChildElement.key || `${index}`;
-      let oldChildElement = oldChildrenElementsMap.get(key);
+      newChildElement._mountIndex = index;
+      const oldChildElement = oldChildrenElementsMap.get(key);
       if (newChildElement === oldChildElement) {
         // 复用老节点
         if (oldChildElement._mountIndex < lastIndex) {
@@ -139,6 +143,7 @@ function diff(parentNode, oldChildrenElements, newChildrenElements, diffQueue) {
           dom: createDOM(newChildElement),
         });
       }
+      // // 很重要，_mountIndex是在创建原生子元素时赋值上去的，此时diff的时候新的dom还没有挂载，所以需要再次赋值一下，后面会用到
     } else {
       // 之前有，现在没有了，那么就表示组件要卸载掉
       let key = `${index}`;
@@ -150,22 +155,24 @@ function diff(parentNode, oldChildrenElements, newChildrenElements, diffQueue) {
         oldChildElement.componentInstance.componentWillUnmount();
       }
     }
+    index++;
+  });
 
-    // 遍历现有的元素
-    oldChildrenElementsMap.forEach((oldChildElement, key) => {
-      if (!newChildrenElementsMap.has(key)) {
-        diffQueue.push({
-          parentNode,
-          type: REMOVE,
-          fromIndex: oldChildElement._mountIndex,
-        });
-      }
-    });
-  }
+  // 遍历现有的元素
+  oldChildrenElementsMap.forEach((oldChildElement, key) => {
+    if (!newChildrenElementsMap.has(key)) {
+      diffQueue.push({
+        parentNode,
+        type: REMOVE,
+        fromIndex: oldChildElement._mountIndex,
+      });
+    }
+  });
 }
 
 /**
  * 比较每个reactElement的key和type
+ * @returns {Map}
  */
 function getNewChildrenElementsMap(
   oldChildrenElementsMap,
@@ -182,6 +189,7 @@ function getNewChildrenElementsMap(
     if (canDeepCompare(oldChildElement, newChildElement)) {
       updateElement(oldChildElement, newChildElement);
       newChildElement = oldChildElement;
+      newChildrenElements[index] = oldChildElement;
     }
     newChildrenElementsMap.set(key, newChildElement);
   }
@@ -204,7 +212,6 @@ function canDeepCompare(oldChildElement, newChildElement) {
  */
 function getChildrenElementsMap(oldChildrenElements) {
   let oldChildrenElementsMap = new Map();
-  console.log(oldChildrenElements);
 
   for (let index = 0; index < oldChildrenElements.length; index++) {
     const element = oldChildrenElements[index];
@@ -229,8 +236,6 @@ export function patchProps(dom, props, nextProps) {
 
   forOwn(nextProps, (value, key) => {
     if (key === 'children') return;
-    console.log(value, key);
-
     setProp(dom, key, value);
   });
 }
@@ -281,7 +286,6 @@ function createClassComponentDOM(reactElement) {
 
 function createNativeDOM(element) {
   const { type, props } = element;
-
   const { children } = props;
   const dom = document.createElement(type);
   if (children) {

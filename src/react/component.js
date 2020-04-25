@@ -15,6 +15,8 @@ class Component {
    */
   forceUpdate() {
     const { renderElement } = this;
+    // 重新获取一个新的reactElement，每次setState的时候都会重新的去调用render函数
+    // 然后比较新的与老的差别(dom-diff)，更新dom
     const newRenderElement = this.render();
     const currentElement = compareTwoElements(renderElement, newRenderElement);
     this.renderElement = currentElement;

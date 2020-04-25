@@ -1,8 +1,9 @@
-import React, { Component } from './react';
+import React from './react';
 import ReactDOM from './react-dom';
 
-// import React, { Component } from 'react';
+// import React from 'react';
 // import ReactDOM from 'react-dom';
+let index = 0;
 class Todos extends React.Component {
   constructor(props) {
     super(props);
@@ -10,33 +11,51 @@ class Todos extends React.Component {
   }
   add = () => {
     if (this.state.text && this.state.text.length > 0) {
-      this.setState({ list: [...this.state.list, this.state.text] });
+      this.setState({
+        list: [
+          ...this.state.list,
+          {
+            content: this.state.text,
+            key: index++,
+          },
+        ],
+      });
     }
   };
   onChange = event => {
-    this.setState({ text: event.target.value });
+    event.persist();
+    console.log(event.target.value);
+
+    if (event.keyCode === 13) {
+      this.add();
+    } else {
+      this.setState({ text: event.target.value });
+    }
   };
   onDel = index => {
     this.state.list.splice(index, 1);
     this.setState({ list: this.state.list });
   };
   render() {
-    var createItem = (itemText, index) => {
-      return React.createElement(
-        'li',
-        {},
-        itemText,
-        React.createElement('button', { onClick: () => this.onDel(index) }, 'X')
-      );
-    };
-    var lists = this.state.list.map(createItem);
-    let ul = React.createElement('ul', {}, ...lists);
-    var input = React.createElement('input', {
-      onKeyup: this.onChange,
-      value: this.state.text,
-    });
-    var button = React.createElement('button', { onClick: this.add }, 'Add');
-    return React.createElement('div', {}, input, button, ul);
+    return (
+      <div>
+        <div>
+          <input onKeyUp={this.onChange} value={this.state.text} />
+          <button onClick={this.add}>add</button>
+        </div>
+        <ul>
+          {this.state.list.map((item, index) => {
+            return (
+              <li>
+                {item.content}
+                <input />
+                <button onClick={() => this.onDel(index)}>X</button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
   }
 }
 let element = React.createElement(Todos, {});
